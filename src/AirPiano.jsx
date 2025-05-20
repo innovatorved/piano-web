@@ -287,10 +287,14 @@ function AirPiano() {
     setErrorMessage("");
 
     // Check for MediaRecorder support
-    if (typeof window.MediaRecorder === 'undefined') {
-      const mediaRecorderSupportError = "Video recording is not supported by your browser. Recording features will be disabled.";
+    if (typeof window.MediaRecorder === "undefined") {
+      const mediaRecorderSupportError =
+        "Video recording is not supported by your browser. Recording features will be disabled.";
       setErrorMessage(mediaRecorderSupportError); // Set as a global error for prominence
-      setErrorMessages(prev => ({...prev, mediaRecorder: mediaRecorderSupportError }));
+      setErrorMessages((prev) => ({
+        ...prev,
+        mediaRecorder: mediaRecorderSupportError,
+      }));
       setIsLoading(false); // Stop loading as core functionality is missing
       // No need to return early, let other setup proceed if it can, but recording will be disabled.
     }
@@ -374,7 +378,10 @@ function AirPiano() {
           console.log("Canvas stream captured:", canvasStreamRef.current);
         } else {
           console.warn("canvas.captureStream() is not supported.");
-          setErrorMessages(prev => ({...prev, canvas: "Canvas stream capture not supported."}));
+          setErrorMessages((prev) => ({
+            ...prev,
+            canvas: "Canvas stream capture not supported.",
+          }));
         }
 
         if (isActive) {
@@ -487,10 +494,18 @@ function AirPiano() {
           Tone.getDestination().connect(pianoDestNode);
           pianoAudioStreamRef.current = pianoDestNode.stream;
           setPianoStream(pianoDestNode.stream); // Save to state if UI needs to react
-          console.log("Piano audio stream created:", pianoAudioStreamRef.current);
+          console.log(
+            "Piano audio stream created:",
+            pianoAudioStreamRef.current,
+          );
         } else {
-          console.warn("Tone.context.createMediaStreamDestination is not available.");
-          setErrorMessages(prev => ({...prev, piano: "Piano audio stream creation failed."}));
+          console.warn(
+            "Tone.context.createMediaStreamDestination is not available.",
+          );
+          setErrorMessages((prev) => ({
+            ...prev,
+            piano: "Piano audio stream creation failed.",
+          }));
         }
 
         setIsAudioStarted(true);
@@ -509,11 +524,11 @@ function AirPiano() {
   const stopMicrophoneCapture = () => {
     if (micStreamRef.current) {
       console.log("Stopping microphone capture...");
-      micStreamRef.current.getTracks().forEach(track => track.stop());
+      micStreamRef.current.getTracks().forEach((track) => track.stop());
       micStreamRef.current = null;
       setUserMicStream(null);
       setMicError(null); // Clear any previous mic errors
-      setErrorMessages(prev => ({...prev, microphone: "Disabled"}));
+      setErrorMessages((prev) => ({ ...prev, microphone: "Disabled" }));
     } else {
       console.log("Microphone already stopped or not initialized.");
     }
@@ -522,27 +537,45 @@ function AirPiano() {
   // --- Microphone Capture ---
   const startMicrophoneCapture = async () => {
     setMicError(null);
-    setErrorMessages(prev => ({...prev, microphone: null}));
+    setErrorMessages((prev) => ({ ...prev, microphone: null }));
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       console.error("getUserMedia not supported for microphone.");
-      setMicError("Microphone access (getUserMedia) is not supported by your browser.");
-      setErrorMessages(prev => ({...prev, microphone: "getUserMedia not supported."}));
+      setMicError(
+        "Microphone access (getUserMedia) is not supported by your browser.",
+      );
+      setErrorMessages((prev) => ({
+        ...prev,
+        microphone: "getUserMedia not supported.",
+      }));
       return;
     }
     try {
       console.log("Requesting microphone access...");
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: true,
+        video: false,
+      });
       micStreamRef.current = stream;
       setUserMicStream(stream); // Update state to trigger UI changes if needed
       console.log("Microphone access granted, stream:", stream);
     } catch (error) {
       console.error("Error accessing microphone:", error);
-      if (error.name === "NotAllowedError" || error.name === "PermissionDeniedError") {
-        setMicError("Microphone permission denied. Please allow microphone access.");
-        setErrorMessages(prev => ({...prev, microphone: "Permission denied."}));
+      if (
+        error.name === "NotAllowedError" ||
+        error.name === "PermissionDeniedError"
+      ) {
+        setMicError(
+          "Microphone permission denied. Please allow microphone access.",
+        );
+        setErrorMessages((prev) => ({
+          ...prev,
+          microphone: "Permission denied.",
+        }));
       } else {
-        setMicError("Could not access microphone. Ensure it's connected and not in use.");
-        setErrorMessages(prev => ({...prev, microphone: "Access error."}));
+        setMicError(
+          "Could not access microphone. Ensure it's connected and not in use.",
+        );
+        setErrorMessages((prev) => ({ ...prev, microphone: "Access error." }));
       }
       setUserMicStream(null);
     }
@@ -555,37 +588,58 @@ function AirPiano() {
     const currentMicStream = micStreamRef.current;
     let finalStream = null;
 
-    if (currentPianoStream && currentMicStream && 
-        currentPianoStream.getAudioTracks().length > 0 && 
-        currentMicStream.getAudioTracks().length > 0) {
+    if (
+      currentPianoStream &&
+      currentMicStream &&
+      currentPianoStream.getAudioTracks().length > 0 &&
+      currentMicStream.getAudioTracks().length > 0
+    ) {
       try {
         console.log("Combining piano and microphone audio streams.");
         const audioContext = Tone.context;
-        const pianoSource = audioContext.createMediaStreamSource(currentPianoStream);
-        const micSource = audioContext.createMediaStreamSource(currentMicStream);
+        const pianoSource =
+          audioContext.createMediaStreamSource(currentPianoStream);
+        const micSource =
+          audioContext.createMediaStreamSource(currentMicStream);
         const combinedDestination = audioContext.createMediaStreamDestination();
-        
+
         pianoSource.connect(combinedDestination);
         micSource.connect(combinedDestination);
-        
+
         finalStream = combinedDestination.stream;
         console.log("Successfully combined audio streams:", finalStream);
       } catch (error) {
         console.error("Error combining audio streams:", error);
-        setErrorMessages(prev => ({...prev, combinedAudio: "Error combining streams."}));
+        setErrorMessages((prev) => ({
+          ...prev,
+          combinedAudio: "Error combining streams.",
+        }));
         // Fallback to piano stream if combination fails
-        if (currentPianoStream && currentPianoStream.getAudioTracks().length > 0) {
+        if (
+          currentPianoStream &&
+          currentPianoStream.getAudioTracks().length > 0
+        ) {
           finalStream = currentPianoStream;
-          console.warn("Falling back to piano stream only due to combination error.");
+          console.warn(
+            "Falling back to piano stream only due to combination error.",
+          );
         } else {
           finalStream = null;
         }
       }
-    } else if (currentPianoStream && currentPianoStream.getAudioTracks().length > 0) {
+    } else if (
+      currentPianoStream &&
+      currentPianoStream.getAudioTracks().length > 0
+    ) {
       console.log("Using piano audio stream only.");
       finalStream = currentPianoStream;
-    } else if (currentMicStream && currentMicStream.getAudioTracks().length > 0) {
-      console.log("Using microphone audio stream only (unexpected for this app, but handling).");
+    } else if (
+      currentMicStream &&
+      currentMicStream.getAudioTracks().length > 0
+    ) {
+      console.log(
+        "Using microphone audio stream only (unexpected for this app, but handling).",
+      );
       finalStream = currentMicStream;
     } else {
       console.warn("No audio streams available to prepare for recording.");
@@ -595,9 +649,12 @@ function AirPiano() {
     combinedAudioStreamRef.current = finalStream;
     setFinalAudioStream(finalStream);
     if (!finalStream) {
-        setErrorMessages(prev => ({...prev, combinedAudio: "No audio stream available for recording."}));
+      setErrorMessages((prev) => ({
+        ...prev,
+        combinedAudio: "No audio stream available for recording.",
+      }));
     } else {
-        setErrorMessages(prev => ({...prev, combinedAudio: null}));
+      setErrorMessages((prev) => ({ ...prev, combinedAudio: null }));
     }
   }, []); // Dependencies will be handled by useEffect
 
@@ -613,8 +670,11 @@ function AirPiano() {
     const currentCombinedAudioStream = combinedAudioStreamRef.current;
     let newAVStream = null;
 
-    const hasVideo = currentCanvasStream && currentCanvasStream.getVideoTracks().length > 0;
-    const hasAudio = currentCombinedAudioStream && currentCombinedAudioStream.getAudioTracks().length > 0;
+    const hasVideo =
+      currentCanvasStream && currentCanvasStream.getVideoTracks().length > 0;
+    const hasAudio =
+      currentCombinedAudioStream &&
+      currentCombinedAudioStream.getAudioTracks().length > 0;
 
     if (hasVideo && hasAudio) {
       try {
@@ -623,11 +683,14 @@ function AirPiano() {
         newAVStream = new MediaStream([videoTrack, ...audioTracks]);
         finalAVStreamRef.current = newAVStream;
         console.log("Successfully created final A/V stream:", newAVStream);
-        setErrorMessages(prev => ({ ...prev, avStream: null }));
+        setErrorMessages((prev) => ({ ...prev, avStream: null }));
       } catch (error) {
         console.error("Error creating final A/V stream:", error);
         finalAVStreamRef.current = null;
-        setErrorMessages(prev => ({ ...prev, avStream: "Error creating A/V stream." }));
+        setErrorMessages((prev) => ({
+          ...prev,
+          avStream: "Error creating A/V stream.",
+        }));
       }
     } else {
       let errorMsg = "Cannot create A/V stream: ";
@@ -635,7 +698,7 @@ function AirPiano() {
       if (!hasAudio) errorMsg += "Audio track missing.";
       console.warn(errorMsg.trim());
       finalAVStreamRef.current = null;
-      setErrorMessages(prev => ({ ...prev, avStream: errorMsg.trim() }));
+      setErrorMessages((prev) => ({ ...prev, avStream: errorMsg.trim() }));
     }
   }, []); // Dependencies will be handled by useEffect
 
@@ -643,15 +706,19 @@ function AirPiano() {
   useEffect(() => {
     // isCameraReady implies canvasStreamRef.current should be available
     // finalAudioStream is the state for combinedAudioStreamRef.current
-    if (isCameraReady && finalAudioStream) { // finalAudioStream state is used here
+    if (isCameraReady && finalAudioStream) {
+      // finalAudioStream state is used here
       prepareFinalAVStream();
     } else if (!isCameraReady || !finalAudioStream) {
-        // If sources are not ready, ensure the final AV stream is also cleared
-        finalAVStreamRef.current = null;
-        let errorParts = [];
-        if (!isCameraReady) errorParts.push("Canvas stream not ready");
-        if (!finalAudioStream) errorParts.push("Combined audio stream not ready"); // And here
-        setErrorMessages(prev => ({ ...prev, avStream: `Cannot prepare A/V stream: ${errorParts.join(', ')}.` }));
+      // If sources are not ready, ensure the final AV stream is also cleared
+      finalAVStreamRef.current = null;
+      let errorParts = [];
+      if (!isCameraReady) errorParts.push("Canvas stream not ready");
+      if (!finalAudioStream) errorParts.push("Combined audio stream not ready"); // And here
+      setErrorMessages((prev) => ({
+        ...prev,
+        avStream: `Cannot prepare A/V stream: ${errorParts.join(", ")}.`,
+      }));
     }
   }, [isCameraReady, finalAudioStream, prepareFinalAVStream]); // And here
 
@@ -662,19 +729,30 @@ function AirPiano() {
       console.log("Already recording.");
       return;
     }
-    if (!finalAVStreamRef.current || finalAVStreamRef.current.getTracks().length === 0) {
-      setRecordingError("Cannot start recording: AV stream not ready or has no tracks.");
-      console.error("Cannot start recording: AV stream not ready or has no tracks. Current stream:", finalAVStreamRef.current);
-      setErrorMessages(prev => ({...prev, recording: "AV stream not ready."}));
+    if (
+      !finalAVStreamRef.current ||
+      finalAVStreamRef.current.getTracks().length === 0
+    ) {
+      setRecordingError(
+        "Cannot start recording: AV stream not ready or has no tracks.",
+      );
+      console.error(
+        "Cannot start recording: AV stream not ready or has no tracks. Current stream:",
+        finalAVStreamRef.current,
+      );
+      setErrorMessages((prev) => ({
+        ...prev,
+        recording: "AV stream not ready.",
+      }));
       return;
     }
 
     recordedChunksRef.current = [];
     setVideoBlob(null);
     setRecordingError(null);
-    setErrorMessages(prev => ({...prev, recording: null}));
+    setErrorMessages((prev) => ({ ...prev, recording: null }));
 
-    const options = { mimeType: 'video/webm; codecs=vp9,opus' };
+    const options = { mimeType: "video/webm; codecs=vp9,opus" };
     let recorder;
 
     try {
@@ -683,22 +761,35 @@ function AirPiano() {
     } catch (error) {
       console.error("Failed to create MediaRecorder:", error);
       setRecordingError(`Failed to create MediaRecorder: ${error.message}`);
-      setErrorMessages(prev => ({...prev, recording: `Recorder creation failed: ${error.message}`}));
+      setErrorMessages((prev) => ({
+        ...prev,
+        recording: `Recorder creation failed: ${error.message}`,
+      }));
       // Attempt fallback if specific codecs failed
       try {
-        console.log("Attempting fallback MediaRecorder with default mimeType...");
-        const fallbackOptions = { mimeType: 'video/webm' };
+        console.log(
+          "Attempting fallback MediaRecorder with default mimeType...",
+        );
+        const fallbackOptions = { mimeType: "video/webm" };
         recorder = new MediaRecorder(finalAVStreamRef.current, fallbackOptions);
         mediaRecorderRef.current = recorder;
         console.log("Fallback MediaRecorder created successfully.");
       } catch (fallbackError) {
-        console.error("Fallback MediaRecorder creation also failed:", fallbackError);
-        setRecordingError(`Fallback MediaRecorder failed: ${fallbackError.message}`);
-        setErrorMessages(prev => ({...prev, recording: `Fallback recorder failed: ${fallbackError.message}`}));
+        console.error(
+          "Fallback MediaRecorder creation also failed:",
+          fallbackError,
+        );
+        setRecordingError(
+          `Fallback MediaRecorder failed: ${fallbackError.message}`,
+        );
+        setErrorMessages((prev) => ({
+          ...prev,
+          recording: `Fallback recorder failed: ${fallbackError.message}`,
+        }));
         return;
       }
     }
-    
+
     mediaRecorderRef.current.ondataavailable = (event) => {
       if (event.data.size > 0) {
         recordedChunksRef.current.push(event.data);
@@ -714,14 +805,24 @@ function AirPiano() {
       setVideoBlob(blob);
       setIsRecording(false);
       recordedChunksRef.current = [];
-      console.log("Recording stopped, blob created. Size:", blob.size, "Type:", blob.type);
-      setErrorMessages(prev => ({...prev, recording: null}));
+      console.log(
+        "Recording stopped, blob created. Size:",
+        blob.size,
+        "Type:",
+        blob.type,
+      );
+      setErrorMessages((prev) => ({ ...prev, recording: null }));
     };
 
     mediaRecorderRef.current.onerror = (event) => {
       console.error("MediaRecorder error:", event.error);
-      setRecordingError(`MediaRecorder error: ${event.error.name} - ${event.error.message}`);
-      setErrorMessages(prev => ({...prev, recording: `Recorder error: ${event.error.name}`}));
+      setRecordingError(
+        `MediaRecorder error: ${event.error.name} - ${event.error.message}`,
+      );
+      setErrorMessages((prev) => ({
+        ...prev,
+        recording: `Recorder error: ${event.error.name}`,
+      }));
       setIsRecording(false);
     };
 
@@ -730,21 +831,30 @@ function AirPiano() {
       setIsRecording(true);
       console.log("Recording started successfully.");
     } catch (error) {
-        console.error("Error starting MediaRecorder:", error);
-        setRecordingError(`Error starting MediaRecorder: ${error.message}`);
-        setErrorMessages(prev => ({...prev, recording: `Recorder start failed: ${error.message}`}));
-        setIsRecording(false); // Ensure isRecording is false if start fails
+      console.error("Error starting MediaRecorder:", error);
+      setRecordingError(`Error starting MediaRecorder: ${error.message}`);
+      setErrorMessages((prev) => ({
+        ...prev,
+        recording: `Recorder start failed: ${error.message}`,
+      }));
+      setIsRecording(false); // Ensure isRecording is false if start fails
     }
   };
 
   const stopRecording = () => {
     console.log("Attempting to stop recording...");
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+    if (
+      mediaRecorderRef.current &&
+      mediaRecorderRef.current.state === "recording"
+    ) {
       mediaRecorderRef.current.stop(); // This will trigger the onstop handler
       console.log("Stop recording initiated via stopRecording().");
     } else {
-      console.log("Not recording or MediaRecorder not initialized/already stopped.");
-      if (isRecording) { // If state is somehow out of sync
+      console.log(
+        "Not recording or MediaRecorder not initialized/already stopped.",
+      );
+      if (isRecording) {
+        // If state is somehow out of sync
         setIsRecording(false);
       }
     }
@@ -753,14 +863,17 @@ function AirPiano() {
   // Cleanup effect for MediaRecorder
   useEffect(() => {
     return () => {
-      if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+      if (
+        mediaRecorderRef.current &&
+        mediaRecorderRef.current.state === "recording"
+      ) {
         console.log("Component unmounting, stopping recording...");
         mediaRecorderRef.current.stop();
       }
       // Clean up any stream references if they are still active and managed by this component directly
       // This is more of a general cleanup, specific stream cleanup is handled in their respective useEffects
       if (micStreamRef.current) {
-        micStreamRef.current.getTracks().forEach(track => track.stop());
+        micStreamRef.current.getTracks().forEach((track) => track.stop());
         micStreamRef.current = null;
       }
       // pianoAudioStreamRef and canvasStreamRef are managed by Tone.js and camera setup respectively
@@ -772,32 +885,38 @@ function AirPiano() {
   const handleDownloadRecording = () => {
     if (!videoBlob) {
       console.error("No recording available for download.");
-      setErrorMessages(prev => ({...prev, download: "No recording available."}));
+      setErrorMessages((prev) => ({
+        ...prev,
+        download: "No recording available.",
+      }));
       return;
     }
-    setErrorMessages(prev => ({...prev, download: null})); // Clear previous download errors
+    setErrorMessages((prev) => ({ ...prev, download: null })); // Clear previous download errors
 
     try {
       const objectUrl = URL.createObjectURL(videoBlob);
-      const a = document.createElement('a');
-      a.style.display = 'none';
+      const a = document.createElement("a");
+      a.style.display = "none";
       a.href = objectUrl;
       // Generate a filename with a timestamp
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-      a.download = `air-piano-recording-${timestamp}.webm`; 
-      
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+      a.download = `air-piano-recording-${timestamp}.webm`;
+
       document.body.appendChild(a);
       a.click();
-      
+
       // Clean up
       window.URL.revokeObjectURL(objectUrl);
       document.body.removeChild(a);
-      
+
       console.log("Download initiated for:", a.download);
-      setErrorMessages(prev => ({...prev, download: "Download started."})); // Feedback for user
+      setErrorMessages((prev) => ({ ...prev, download: "Download started." })); // Feedback for user
     } catch (error) {
       console.error("Error during download initiation:", error);
-      setErrorMessages(prev => ({...prev, download: "Download failed to start."}));
+      setErrorMessages((prev) => ({
+        ...prev,
+        download: "Download failed to start.",
+      }));
     }
   };
 
@@ -807,7 +926,9 @@ function AirPiano() {
       {/* Header section */}
       <div className="absolute top-0 left-0 w-full flex justify-center items-center p-4 z-30 bg-black bg-opacity-50">
         <div className="text-center">
-          <h1 className="text-xl md:text-4xl font-bold text-white">Web Air Piano</h1>
+          <h1 className="text-xl md:text-4xl font-bold text-white">
+            Web Air Piano
+          </h1>
           <p className="text-xs text-gray-300">Created by Smriti</p>
         </div>
       </div>
@@ -815,118 +936,69 @@ function AirPiano() {
       {/* Main Status Messages (Loading, Global Errors) */}
       <div className="absolute top-20 left-0 w-full flex justify-center items-center z-20 px-4">
         {isLoading && (
-          <p className="status-message bg-black bg-opacity-60">Loading Models and Camera...</p>
+          <p className="status-message bg-black bg-opacity-60">
+            Loading Models and Camera...
+          </p>
         )}
         {errorMessage && (
-          <p className="status-message bg-red-900 bg-opacity-70">{errorMessage}</p>
+          <p className="status-message bg-red-900 bg-opacity-70">
+            {errorMessage}
+          </p>
         )}
         {!isLoading && !isCameraReady && !errorMessage && (
-          <p className="status-message bg-black bg-opacity-60">Waiting for camera access...</p>
+          <p className="status-message bg-black bg-opacity-60">
+            Waiting for camera access...
+          </p>
         )}
       </div>
-      
+
       {/* Control Panel - Positioned below global status messages */}
       <div className="absolute top-32 left-0 w-full flex flex-col items-center z-20 space-y-2 px-4">
         {/* Audio Enable Button & Status */}
         {!isLoading && isCameraReady && !isAudioStarted && (
           <button
             onClick={handleStartAudio}
-            className="control-button bg-green-600 hover:bg-green-500"
+            className="control-button bg-green-600 hover:bg-green-500 p-2 text-xs rounded-lg"
           >
             Enable Audio
           </button>
         )}
         {isAudioStarted && (
-          <div className="status-indicator-small bg-green-700">
-            <div className="w-3 h-3 rounded-full bg-green-400 mr-2 animate-pulse"></div>
+          <div className="status-indicator-small text-green-700 flex items-center text-xs font-bold">
+            <div className="w-3 h-3 rounded-full bg-green-400 mr-2 animate-pulse p-2 text-xs"></div>
             Audio Enabled
           </div>
         )}
 
         {/* Microphone Controls */}
         {isAudioStarted && ( // Only show mic controls if audio context is started
-          <div className="flex flex-col items-center space-y-1 w-full max-w-xs">
+          <div className="flex flex-col items-center space-y-1 w-full max-w-xs o">
             <button
-              onClick={userMicStream ? stopMicrophoneCapture : startMicrophoneCapture}
+              onClick={
+                userMicStream ? stopMicrophoneCapture : startMicrophoneCapture
+              }
               disabled={!isAudioStarted} // Ensure audio is started before allowing mic changes
-              className={`control-button ${userMicStream ? "bg-yellow-600 hover:bg-yellow-500" : "bg-blue-600 hover:bg-blue-500"} ${!isAudioStarted ? "opacity-50 cursor-not-allowed" : ""}`}
+              className={`control-button p-2 rounded-md text-xs ${userMicStream ? "bg-yellow-600 hover:bg-yellow-500" : "bg-blue-600 hover:bg-blue-500"} ${!isAudioStarted ? "opacity-50 cursor-not-allowed" : ""}`}
             >
               {userMicStream ? "Disable Microphone" : "Enable Microphone"}
             </button>
             <p className="text-xs text-gray-300">
-              Microphone: {" "}
-              {micError ? <span className="text-red-400">{micError}</span> : 
-               userMicStream ? <span className="text-green-400">Enabled</span> : 
-               errorMessages.microphone === "Disabled" ? <span className="text-yellow-400">Disabled</span> :
-               errorMessages.microphone ? <span className="text-red-400">{errorMessages.microphone}</span> :
-               <span className="text-gray-400">Not Active</span>
-              }
+              Microphone:{" "}
+              {micError ? (
+                <span className="text-red-400">{micError}</span>
+              ) : userMicStream ? (
+                <span className="text-green-400">Enabled</span>
+              ) : errorMessages.microphone === "Disabled" ? (
+                <span className="text-yellow-400">Disabled</span>
+              ) : errorMessages.microphone ? (
+                <span className="text-red-400">{errorMessages.microphone}</span>
+              ) : (
+                <span className="text-gray-400">Not Active</span>
+              )}
             </p>
           </div>
         )}
-
-        {/* Recording Controls & Status */}
-        {isAudioStarted && ( // Only show recording controls if audio context is started
-          <div className="flex flex-col items-center space-y-1 w-full max-w-xs p-2 border border-gray-700 rounded-lg bg-gray-800 bg-opacity-30">
-            <div className="flex space-x-2">
-              <button
-                onClick={startRecording}
-                disabled={isRecording || !finalAVStreamRef.current || !!recordingError || !!errorMessages.avStream || !!errorMessages.mediaRecorder || !!errorMessages.canvas || !!errorMessages.piano}
-                className="control-button bg-red-700 hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Start Recording
-              </button>
-              <button
-                onClick={stopRecording}
-                disabled={!isRecording || !!errorMessages.mediaRecorder}
-                className="control-button bg-red-500 hover:bg-red-400 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Stop Recording
-              </button>
-            </div>
-            {isRecording && (
-              <div className="status-indicator-small bg-red-700 animate-pulse">
-                <div className="w-3 h-3 rounded-full bg-red-400 mr-2"></div>
-                Recording...
-              </div>
-            )}
-            {recordingError && (
-              <p className="text-xs text-red-400">Recording Error: {recordingError}</p>
-            )}
-            {errorMessages.mediaRecorder && (
-              <p className="text-xs text-red-500 font-semibold">{errorMessages.mediaRecorder}</p>
-            )}
-            {errorMessages.canvas && (
-              <p className="text-xs text-yellow-400">Canvas Stream: {errorMessages.canvas}</p>
-            )}
-            {errorMessages.piano && (
-              <p className="text-xs text-yellow-400">Piano Stream: {errorMessages.piano}</p>
-            )}
-            {errorMessages.avStream && (
-              <p className="text-xs text-yellow-400">A/V Stream: {errorMessages.avStream}</p>
-            )}
-            {errorMessages.combinedAudio && (
-              <p className="text-xs text-yellow-400">Audio Combine: {errorMessages.combinedAudio}</p>
-            )}
-            <button
-              onClick={handleDownloadRecording}
-              disabled={!videoBlob || isRecording || !!errorMessages.mediaRecorder}
-              className="control-button bg-green-700 hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed mt-1"
-            >
-              Download Recording
-            </button>
-            {videoBlob && !isRecording && (
-              <p className="text-xs text-green-400">Recording ready for download!</p>
-            )}
-            {errorMessages.download && (
-              <p className={`text-xs ${errorMessages.download.includes("failed") || errorMessages.download.includes("No recording") ? "text-red-400" : "text-green-400"} mt-1`}>
-                {errorMessages.download}
-              </p>
-            )}
-          </div>
-        )}
       </div>
-
 
       {/* Hidden video element */}
       <video ref={webcamRef} autoPlay playsInline className="hidden"></video>
@@ -936,6 +1008,171 @@ function AirPiano() {
         ref={canvasRef}
         className="absolute inset-0 w-full h-full object-cover z-0"
       ></canvas>
+
+      {/* Recording Controls & Download Card - SMALL, bottom right */}
+      {isAudioStarted && (
+        <div className="fixed bottom-4 right-4 z-40 text-xs">
+          <div className="rounded-xl shadow-2xl bg-gradient-to-br from-gray-900/90 to-gray-800/90 border border-gray-700 px-4 py-3 flex flex-col items-center space-y-2 w-64 max-w-[90vw]">
+            {/* Recording Buttons */}
+            <div className="flex items-center space-x-2 w-full justify-center">
+              <button
+                onClick={startRecording}
+                disabled={
+                  isRecording ||
+                  !finalAVStreamRef.current ||
+                  !!recordingError ||
+                  !!errorMessages.avStream ||
+                  !!errorMessages.mediaRecorder ||
+                  !!errorMessages.canvas ||
+                  !!errorMessages.piano
+                }
+                className={`flex items-center text-xs gap-2 px-3 py-1 rounded-full font-semibold transition-all duration-150 shadow-md
+                  ${
+                    isRecording ||
+                    !finalAVStreamRef.current ||
+                    !!recordingError ||
+                    !!errorMessages.avStream ||
+                    !!errorMessages.mediaRecorder ||
+                    !!errorMessages.canvas ||
+                    !!errorMessages.piano
+                      ? "bg-red-700/60 text-red-200 cursor-not-allowed"
+                      : "bg-red-600 hover:bg-red-500 text-white"
+                  }
+                `}
+              >
+                <span className="inline-block w-2 h-2 rounded-full bg-red-400 animate-pulse"></span>
+                Record
+              </button>
+              <button
+                onClick={stopRecording}
+                disabled={!isRecording || !!errorMessages.mediaRecorder}
+                className={`flex items-center gap-2 px-3 py-1  rounded-full font-semibold text-xs transition-all duration-150 shadow-md
+                  ${
+                    !isRecording || !!errorMessages.mediaRecorder
+                      ? "bg-gray-600 text-gray-300 cursor-not-allowed"
+                      : "bg-red-500 hover:bg-red-400 text-white"
+                  }
+                `}
+              >
+                <svg
+                  className="w-3 h-3"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  viewBox="0 0 24 24"
+                >
+                  <rect
+                    x="6"
+                    y="6"
+                    width="12"
+                    height="12"
+                    rx="2"
+                    fill="currentColor"
+                  />
+                </svg>
+                Stop
+              </button>
+            </div>
+
+            {/* Recording Status */}
+            <div className="w-full flex flex-col items-center space-y-1">
+              {isRecording && (
+                <div className="flex items-center gap-2 bg-red-700/80 px-2 py-0.5 rounded-full text-xs font-semibold text-white animate-pulse shadow">
+                  <span className="inline-block w-2 h-2 rounded-full bg-red-400"></span>
+                  Recording...
+                </div>
+              )}
+              {recordingError && (
+                <p className="text-xs text-red-400 font-semibold">
+                  {recordingError}
+                </p>
+              )}
+              {errorMessages.mediaRecorder && (
+                <p className="text-xs text-red-500 font-semibold">
+                  {errorMessages.mediaRecorder}
+                </p>
+              )}
+              {errorMessages.canvas && (
+                <p className="text-xs text-yellow-400">
+                  Canvas: {errorMessages.canvas}
+                </p>
+              )}
+              {errorMessages.piano && (
+                <p className="text-xs text-yellow-400">
+                  Piano: {errorMessages.piano}
+                </p>
+              )}
+              {errorMessages.avStream && (
+                <p className="text-xs text-yellow-400">
+                  AV: {errorMessages.avStream}
+                </p>
+              )}
+              {errorMessages.combinedAudio && (
+                <p className="text-xs text-yellow-400">
+                  Audio: {errorMessages.combinedAudio}
+                </p>
+              )}
+            </div>
+
+            {/* Download Section */}
+            <div className="w-full flex flex-col items-center space-y-1 mt-1">
+              <button
+                onClick={handleDownloadRecording}
+                disabled={
+                  !videoBlob || isRecording || !!errorMessages.mediaRecorder
+                }
+                className={`flex items-center gap-2 px-3 py-1 rounded-full font-semibold text-xs transition-all duration-150 shadow-md
+                  ${
+                    !videoBlob || isRecording || !!errorMessages.mediaRecorder
+                      ? "bg-green-700/60 text-green-200 cursor-not-allowed"
+                      : "bg-green-600 hover:bg-green-500 text-white"
+                  }
+                `}
+              >
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16"
+                  />
+                </svg>
+                Download
+              </button>
+              {videoBlob && !isRecording && (
+                <div className="flex items-center gap-1 text-green-400 text-xs font-semibold">
+                  <svg
+                    className="w-3 h-3"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M5 13l4 4L19 7"
+                    />
+                  </svg>
+                  Ready for download!
+                </div>
+              )}
+              {errorMessages.download && (
+                <p
+                  className={`text-xs mt-0.5 ${errorMessages.download.includes("failed") || errorMessages.download.includes("No recording") ? "text-red-400" : "text-green-400"}`}
+                >
+                  {errorMessages.download}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Instructions overlay - ensure it's above canvas but below other top controls if necessary */}
       <div className="absolute bottom-4 left-0 w-full flex justify-center z-10">
@@ -951,9 +1188,11 @@ function AirPiano() {
 }
 
 // Helper styles - can be moved to CSS file or a style block
-const controlButtonBase = "px-3 py-1 text-xs font-bold rounded-lg shadow-md transition-all duration-200 transform hover:scale-105";
+const controlButtonBase =
+  "px-3 py-1 text-xs font-bold rounded-lg shadow-md transition-all duration-200 transform hover:scale-105";
 const statusMessageBase = "text-base px-3 py-1 rounded-lg";
-const statusIndicatorSmallBase = "px-2 py-1 text-xs rounded-lg flex items-center";
+const statusIndicatorSmallBase =
+  "px-2 py-1 text-xs rounded-lg flex items-center";
 
 // Add these utility classes to your Tailwind config or global CSS if you want to use @apply
 // For now, I'll inline them in the JSX using string templates for simplicity in this environment.
