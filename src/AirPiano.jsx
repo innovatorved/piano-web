@@ -929,7 +929,7 @@ function AirPiano() {
           <h1 className="text-xl md:text-4xl font-bold text-white">
             Web Air Piano
           </h1>
-          <p className="text-xs text-gray-300">Created by Smriti</p>
+          <p className="text-xs text-gray-300"></p>
         </div>
       </div>
 
