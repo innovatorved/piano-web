@@ -23,11 +23,11 @@ const synth = new Tone.PolySynth(Tone.Synth, {
 }).toDestination();
 
 const CHORD_META = {
-  thumb: { name: "D Maj", notes: "D4 · F#4 · A4", finger: "Thumb" },
-  index: { name: "E Min", notes: "E4 · G4 · B4", finger: "Index" },
-  middle: { name: "F# Min", notes: "F#4 · A4 · C#5", finger: "Middle" },
-  ring: { name: "G Maj", notes: "G4 · B4 · D5", finger: "Ring" },
-  pinky: { name: "A Maj", notes: "A4 · C#5 · E5", finger: "Pinky" },
+  thumb: { name: "D Maj", notes: "D·F#·A", finger: "Thumb" },
+  index: { name: "E Min", notes: "E·G·B", finger: "Index" },
+  middle: { name: "F# Min", notes: "F#·A·C#", finger: "Middle" },
+  ring: { name: "G Maj", notes: "G·B·D", finger: "Ring" },
+  pinky: { name: "A Maj", notes: "A·C#·E", finger: "Pinky" },
 };
 
 function formatTime(seconds) {
@@ -71,7 +71,11 @@ function AirPiano() {
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [theme, setTheme] = useState(() => {
     if (typeof window !== "undefined") {
-      return document.documentElement.getAttribute("data-theme") || "dark";
+      return (
+        localStorage.getItem("piano-theme") ||
+        document.documentElement.getAttribute("data-theme") ||
+        "dark"
+      );
     }
     return "dark";
   });
@@ -95,6 +99,25 @@ function AirPiano() {
   const prevFingerStatesRef = useRef({});
   const currentFramePitchRef = useRef(0);
 
+  // Synchronize theme with html attribute and localStorage
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+    try {
+      localStorage.setItem("piano-theme", theme);
+    } catch (_) {}
+    const metaTheme = document.querySelector('meta[name="theme-color"]');
+    if (metaTheme) {
+      metaTheme.setAttribute(
+        "content",
+        theme === "dark" ? "#111213" : "#f8f9fa",
+      );
+    }
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme((prev) => (prev === "dark" ? "light" : "dark"));
+  };
+
   // Timer for recording duration
   useEffect(() => {
     let interval = null;
@@ -108,19 +131,6 @@ function AirPiano() {
     }
     return () => clearInterval(interval);
   }, [isRecording]);
-
-  const toggleTheme = () => {
-    const nextTheme = theme === "dark" ? "light" : "dark";
-    setTheme(nextTheme);
-    document.documentElement.setAttribute("data-theme", nextTheme);
-    const metaTheme = document.querySelector('meta[name="theme-color"]');
-    if (metaTheme) {
-      metaTheme.setAttribute(
-        "content",
-        nextTheme === "dark" ? "#111213" : "#fbfbfb",
-      );
-    }
-  };
 
   const handleVolumeChange = (e) => {
     const val = Number(e.target.value);
@@ -240,6 +250,8 @@ function AirPiano() {
           );
         }
 
+        const isLight =
+          document.documentElement.getAttribute("data-theme") === "light";
         let calculatedPitchOffset = 0;
         const currentActiveMap = {
           thumb: false,
@@ -268,20 +280,23 @@ function AirPiano() {
             const handType = handInfo?.label || "Unknown";
             if (!landmarks) return;
 
-            // Design system connectors: Sleek engineered lines with clean opacity
+            // Connectors
             drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, {
-              color:
-                handType === "Right"
-                  ? "rgba(62, 123, 250, 0.7)"
-                  : "rgba(110, 162, 255, 0.7)",
-              lineWidth: 3,
+              color: isLight
+                ? handType === "Right"
+                  ? "rgba(37, 99, 235, 0.75)"
+                  : "rgba(37, 99, 235, 0.55)"
+                : handType === "Right"
+                  ? "rgba(62, 123, 250, 0.75)"
+                  : "rgba(110, 162, 255, 0.75)",
+              lineWidth: 2.5,
             });
 
-            // Subtle joint dots
+            // Joints
             drawLandmarks(canvasCtx, landmarks, {
-              color: "#ffffff",
+              color: isLight ? "#ffffff" : "#ffffff",
               lineWidth: 1,
-              radius: 2.5,
+              radius: 2,
             });
 
             // Fingertip nodes & chord note visualization
@@ -299,7 +314,6 @@ function AirPiano() {
                 currentActiveMap[fingerName] = true;
               }
 
-              // Tip landmark position for drawing
               const tipIndex =
                 Landmark[`${fingerName.toUpperCase()}_FINGER_TIP`] ||
                 Landmark.THUMB_TIP;
@@ -312,50 +326,53 @@ function AirPiano() {
                 if (currentFingerState) {
                   // Active glowing ripple
                   canvasCtx.beginPath();
-                  canvasCtx.arc(tipX, tipY, 12, 0, 2 * Math.PI);
+                  canvasCtx.arc(tipX, tipY, 10, 0, 2 * Math.PI);
                   canvasCtx.fillStyle = "rgba(78, 208, 138, 0.35)";
                   canvasCtx.fill();
 
                   // Active emerald node
                   canvasCtx.beginPath();
-                  canvasCtx.arc(tipX, tipY, 6, 0, 2 * Math.PI);
+                  canvasCtx.arc(tipX, tipY, 5, 0, 2 * Math.PI);
                   canvasCtx.fillStyle = "#4ed08a";
                   canvasCtx.fill();
-                  canvasCtx.lineWidth = 2;
+                  canvasCtx.lineWidth = 1.5;
                   canvasCtx.strokeStyle = "#ffffff";
                   canvasCtx.stroke();
 
-                  // Crisp chord badge tag above fingertip
+                  // Note badge tag
                   const label = CHORD_META[fingerName]?.name || fingerName;
-                  canvasCtx.font =
-                    "600 11px Inter, -apple-system, sans-serif";
+                  canvasCtx.font = "600 10px Inter, sans-serif";
                   const textMetrics = canvasCtx.measureText(label);
-                  const badgeW = textMetrics.width + 12;
-                  const badgeH = 18;
+                  const badgeW = textMetrics.width + 10;
+                  const badgeH = 16;
                   const badgeX = tipX - badgeW / 2;
-                  const badgeY = tipY - 26;
+                  const badgeY = tipY - 24;
 
-                  canvasCtx.fillStyle = "rgba(17, 18, 19, 0.9)";
+                  canvasCtx.fillStyle = isLight
+                    ? "rgba(255, 255, 255, 0.95)"
+                    : "rgba(17, 18, 19, 0.92)";
                   canvasCtx.beginPath();
                   if (canvasCtx.roundRect) {
-                    canvasCtx.roundRect(badgeX, badgeY, badgeW, badgeH, 4);
+                    canvasCtx.roundRect(badgeX, badgeY, badgeW, badgeH, 3);
                   } else {
                     canvasCtx.rect(badgeX, badgeY, badgeW, badgeH);
                   }
                   canvasCtx.fill();
-                  canvasCtx.strokeStyle = "rgba(78, 208, 138, 0.6)";
+                  canvasCtx.strokeStyle = isLight ? "#cbd0d6" : "#36373b";
                   canvasCtx.lineWidth = 1;
                   canvasCtx.stroke();
 
-                  canvasCtx.fillStyle = "#f2f4f7";
+                  canvasCtx.fillStyle = isLight ? "#111827" : "#f2f4f7";
                   canvasCtx.textAlign = "center";
                   canvasCtx.textBaseline = "middle";
                   canvasCtx.fillText(label, tipX, badgeY + badgeH / 2);
                 } else {
-                  // Inactive subtle node
+                  // Inactive node
                   canvasCtx.beginPath();
-                  canvasCtx.arc(tipX, tipY, 4, 0, 2 * Math.PI);
-                  canvasCtx.fillStyle = "rgba(62, 123, 250, 0.9)";
+                  canvasCtx.arc(tipX, tipY, 3, 0, 2 * Math.PI);
+                  canvasCtx.fillStyle = isLight
+                    ? "rgba(37, 99, 235, 0.8)"
+                    : "rgba(62, 123, 250, 0.8)";
                   canvasCtx.fill();
                 }
               }
@@ -449,9 +466,7 @@ function AirPiano() {
     const setupCamera = async () => {
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         if (isActive) {
-          setErrorMessage(
-            "Webcam access is not supported by your browser.",
-          );
+          setErrorMessage("Webcam access is not supported by your browser.");
           setIsLoading(false);
         }
         return;
@@ -600,9 +615,7 @@ function AirPiano() {
         setIsAudioStarted(true);
       } catch (error) {
         console.error("Failed to start AudioContext:", error);
-        setErrorMessage(
-          "Could not enable audio. User interaction required.",
-        );
+        setErrorMessage("Could not enable audio. User interaction required.");
         setIsAudioStarted(false);
       }
     }
@@ -834,7 +847,7 @@ function AirPiano() {
       a.style.display = "none";
       a.href = objectUrl;
       const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-      a.download = `air-piano-session-${timestamp}.webm`;
+      a.download = `air-piano-${timestamp}.webm`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(objectUrl);
@@ -845,21 +858,24 @@ function AirPiano() {
   };
 
   return (
-    <div className="relative w-screen h-screen bg-bg text-fg overflow-hidden flex flex-col font-sans select-none">
-      {/* ── Topbar (Design System) ─────────────────────────────── */}
+    <div
+      className="relative w-screen h-screen overflow-hidden flex flex-col font-sans select-none"
+      style={{ backgroundColor: "var(--bg)", color: "var(--fg)" }}
+    >
+      {/* ── Topbar (Clean Minimalist — No Icons) ──────────────── */}
       <header className="topbar">
         <div className="topbar__brand">
-          <span className="topbar__brand-icon">🎹</span>
+          <span className="topbar__brand-icon">AP</span>
           <span className="topbar__brand-text">Air Piano</span>
           <span className="topbar__track-badge">In Depth</span>
         </div>
 
         {/* Center Live HUD Status Indicators */}
-        <div className="hidden md:flex items-center gap-3">
+        <div className="hidden md:flex items-center gap-2">
           {isLoading ? (
             <span className="badge badge--warning">
               <span className="w-1.5 h-1.5 rounded-full bg-warning animate-pulse"></span>
-              Loading AI Models...
+              Loading Vision
             </span>
           ) : isCameraReady ? (
             <span className="badge badge--success">
@@ -870,14 +886,14 @@ function AirPiano() {
             <span className="badge badge--danger">Camera Inactive</span>
           )}
 
-          <span className="badge badge--muted">
-            🖐️ {handsDetected} {handsDetected === 1 ? "Hand" : "Hands"}
+          <span className="badge badge--muted font-mono">
+            {handsDetected} {handsDetected === 1 ? "Hand" : "Hands"}
           </span>
 
           <span
             className={`badge ${isAudioStarted ? "badge--accent" : "badge--warning"}`}
           >
-            🔊 {isAudioStarted ? "Synth Online" : "Audio Off"}
+            {isAudioStarted ? "Audio Active" : "Audio Off"}
           </span>
 
           <span className="tag">
@@ -893,14 +909,16 @@ function AirPiano() {
               onClick={handleStartAudio}
               className="btn btn--primary btn--sm"
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
               Enable Audio
             </button>
           ) : (
             <div className="flex items-center gap-2">
               {/* Volume Slider */}
-              <div className="hidden lg:flex items-center gap-2 px-2 py-1 bg-surface border border-border rounded-md">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/></svg>
+              <div
+                className="hidden lg:flex items-center gap-1.5 px-2 py-0.5 rounded border border-border"
+                style={{ backgroundColor: "var(--surface)" }}
+              >
+                <span className="text-[10px] text-fg-muted font-mono">VOL</span>
                 <input
                   type="range"
                   min="-24"
@@ -908,7 +926,7 @@ function AirPiano() {
                   step="1"
                   value={volume}
                   onChange={handleVolumeChange}
-                  className="w-16 h-1"
+                  className="w-14 h-1"
                   title={`Volume: ${volume} dB`}
                 />
               </div>
@@ -917,43 +935,28 @@ function AirPiano() {
               <button
                 onClick={userMicStream ? stopMicrophoneCapture : startMicrophoneCapture}
                 className={`btn btn--sm ${userMicStream ? "btn--success" : "btn--secondary"}`}
-                title={userMicStream ? "Disable Microphone" : "Enable Microphone for recording"}
               >
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                  <line x1="12" y1="19" x2="12" y2="23"/>
-                  <line x1="8" y1="23" x2="16" y2="23"/>
-                </svg>
-                <span className="hidden sm:inline">
-                  {userMicStream ? "Mic On" : "Mic"}
-                </span>
+                {userMicStream ? "Mic: On" : "Mic: Off"}
               </button>
             </div>
           )}
 
-          {/* Help Modal Toggle */}
+          {/* Guide Modal Toggle */}
           <button
             onClick={() => setShowHelpModal(true)}
-            className="topbar__btn"
+            className="topbar__btn font-mono"
             title="Gesture Guide & Instructions"
-            aria-label="Gesture Guide"
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            Guide
           </button>
 
           {/* Theme Toggle */}
           <button
             onClick={toggleTheme}
             className="topbar__btn"
-            title="Toggle dark / light theme"
-            aria-label="Toggle theme"
+            title="Toggle Theme"
           >
-            {theme === "dark" ? (
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
-            ) : (
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-            )}
+            {theme === "dark" ? "Light" : "Dark"}
           </button>
 
           {/* GitHub Repo */}
@@ -964,14 +967,16 @@ function AirPiano() {
             className="topbar__btn"
             title="GitHub Repository"
           >
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+            GitHub
           </a>
         </div>
       </header>
 
-      {/* ── Studio Stage (Full bleed Canvas with sleek dark frame) ── */}
-      <main className="relative flex-1 w-full h-full overflow-hidden mt-[56px] flex items-center justify-center bg-bg">
-        {/* Hidden video capturing webcam feed */}
+      {/* ── Studio Stage ────────────────────────────────────────── */}
+      <main
+        className="relative flex-1 w-full h-full overflow-hidden mt-[52px] flex items-center justify-center"
+        style={{ backgroundColor: "var(--bg)" }}
+      >
         <video
           ref={webcamRef}
           autoPlay
@@ -979,28 +984,27 @@ function AirPiano() {
           className="hidden"
         ></video>
 
-        {/* High-res MediaPipe Hand Canvas */}
         <canvas
           ref={canvasRef}
           className="absolute inset-0 w-full h-full object-cover z-0"
         ></canvas>
 
-        {/* Subtle studio vignette overlay */}
-        <div className="absolute inset-0 pointer-events-none bg-gradient-to-t from-bg via-transparent to-bg/40 z-0"></div>
-
         {/* Global Loading Overlay */}
         {isLoading && (
-          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-bg/80 backdrop-blur-md">
-            <div className="w-10 h-10 border-2 border-accent border-t-transparent rounded-full animate-spin mb-4"></div>
-            <h3 className="text-base font-semibold text-fg">Initializing Vision Models...</h3>
-            <p className="text-xs text-fg-muted mt-1">Downloading MediaPipe Hands and calibrating camera stream</p>
+          <div
+            className="absolute inset-0 z-20 flex flex-col items-center justify-center backdrop-blur-md"
+            style={{ backgroundColor: "rgba(var(--bg), 0.85)" }}
+          >
+            <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin mb-3"></div>
+            <h3 className="text-sm font-semibold text-fg">Initializing Vision Models...</h3>
+            <p className="text-xs text-fg-muted mt-1">Calibrating hand tracking and camera feed</p>
           </div>
         )}
 
         {/* Global Error Banner */}
         {errorMessage && (
-          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 max-w-md w-full px-4">
-            <div className="card border-error/50 bg-error/10 text-error flex items-center justify-between p-3">
+          <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 max-w-md w-full px-4">
+            <div className="card border-error/50 bg-error/10 text-error flex items-center justify-between p-2.5">
               <span className="text-xs font-medium">{errorMessage}</span>
               <button
                 onClick={() => setErrorMessage("")}
@@ -1014,32 +1018,34 @@ function AirPiano() {
 
         {/* First Time Audio Initialization Dialog */}
         {!isLoading && isCameraReady && !isAudioStarted && (
-          <div className="absolute inset-0 z-20 flex items-center justify-center bg-bg/60 backdrop-blur-sm p-4">
-            <div className="card panel-glass max-w-md w-full p-6 text-center flex flex-col items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-accent/10 border border-accent/30 grid place-items-center text-accent text-2xl">
-                🎹
+          <div
+            className="absolute inset-0 z-20 flex items-center justify-center backdrop-blur-sm p-4"
+            style={{ backgroundColor: "rgba(0, 0, 0, 0.45)" }}
+          >
+            <div className="card panel-glass max-w-sm w-full p-5 text-center flex flex-col items-center gap-3">
+              <div className="topbar__brand-icon w-10 h-10 text-sm font-bold">
+                AP
               </div>
               <div>
-                <h2 className="text-lg font-bold text-fg">Welcome to Air Piano</h2>
-                <p className="text-xs text-fg-muted mt-1.5 leading-relaxed">
-                  Wave and raise your fingers in front of your camera to trigger lush chords. Click below to start the Tone.js audio engine.
+                <h2 className="text-base font-bold text-fg">Air Piano Studio</h2>
+                <p className="text-xs text-fg-muted mt-1 leading-relaxed">
+                  Raise fingers in front of your camera to play chords. Click below to start the Web Audio synthesizer.
                 </p>
               </div>
 
               <button
                 onClick={handleStartAudio}
-                className="btn btn--primary btn--lg w-full"
+                className="btn btn--primary btn--lg w-full text-xs font-semibold"
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
-                Enable Audio Engine
+                Initialize Audio Engine
               </button>
 
-              <div className="flex items-center gap-3 text-[11px] text-fg-faint">
+              <div className="flex items-center gap-2 text-[10px] text-fg-faint font-mono">
                 <span>FM PolySynth</span>
-                <span>•</span>
-                <span>Live Pitch Bend</span>
-                <span>•</span>
-                <span>4K/HD Video Take</span>
+                <span>·</span>
+                <span>Pitch Bend</span>
+                <span>·</span>
+                <span>WebM Recording</span>
               </div>
             </div>
           </div>
@@ -1048,9 +1054,9 @@ function AirPiano() {
         {/* ── Pitch Meter HUD (Right Edge) ─────────────────────── */}
         <div
           className="pitch-meter-container hidden sm:flex"
-          title="Wrist vertical displacement controls semitone pitch offset"
+          title="Wrist vertical displacement controls pitch offset"
         >
-          <span className="tag" style={{ fontSize: "9px", padding: "1px 4px" }}>
+          <span className="tag" style={{ fontSize: "8.5px", padding: "1px 3px" }}>
             +12
           </span>
           <div className="pitch-meter-track">
@@ -1063,11 +1069,11 @@ function AirPiano() {
               }}
             ></div>
           </div>
-          <span className="tag" style={{ fontSize: "9px", padding: "1px 4px" }}>
+          <span className="tag" style={{ fontSize: "8.5px", padding: "1px 3px" }}>
             -12
           </span>
           <span
-            className="font-mono text-xs font-bold mt-1"
+            className="font-mono text-[10px] font-bold mt-1"
             style={{
               color:
                 pitchOffsetState === 0
@@ -1081,9 +1087,9 @@ function AirPiano() {
           </span>
         </div>
 
-        {/* ── Interactive Chord Dock (Bottom Center) ──────────── */}
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center gap-2 max-w-full px-4">
-          <div className="flex items-center gap-2 sm:gap-3 p-1.5 sm:p-2 rounded-2xl panel-glass overflow-x-auto max-w-full">
+        {/* ── Small Finger Chord Cards Dock (Bottom Center) ───── */}
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center gap-1.5 max-w-full px-4">
+          <div className="chord-dock">
             {FINGER_NAMES.map((finger) => {
               const meta = CHORD_META[finger];
               const isActive = activeFingers[finger];
@@ -1091,59 +1097,54 @@ function AirPiano() {
                 <button
                   key={finger}
                   onClick={() => triggerManualChord(finger)}
-                  className={`chord-card ${isActive ? "active" : ""}`}
-                  title={`Raise ${meta.finger} to trigger ${meta.name} (or click to play)`}
+                  className={`chord-card-sm ${isActive ? "active" : ""}`}
+                  title={`Raise ${meta.finger} to sound ${meta.name} (or click)`}
                 >
-                  <span className="chord-card__finger">{meta.finger}</span>
-                  <span className="chord-card__name">{meta.name}</span>
-                  <span className="chord-card__notes">{meta.notes}</span>
+                  <span className="chord-card-sm__finger">{meta.finger}</span>
+                  <span className="chord-card-sm__name">{meta.name}</span>
+                  <span className="chord-card-sm__notes">{meta.notes}</span>
                 </button>
               );
             })}
           </div>
-          <div className="text-[11px] text-fg-faint tracking-wide flex items-center gap-2">
-            <span>Raise finger to sound chord</span>
-            <span>•</span>
-            <span>Move wrist vertically for pitch bend</span>
+          <div className="text-[10px] text-fg-faint font-mono tracking-wide">
+            Raise finger to play chord · Move wrist vertically to bend pitch
           </div>
         </div>
 
         {/* ── Studio Recording Deck (Bottom Right) ─────────────── */}
         {isAudioStarted && (
-          <div className="fixed bottom-6 right-6 z-30 hidden md:block">
-            <div className="panel-glass p-3 flex flex-col gap-2.5 min-w-[210px]">
+          <div className="fixed bottom-4 right-4 z-30 hidden md:block">
+            <div className="panel-glass p-2.5 flex flex-col gap-2 min-w-[190px]">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-fg">Studio Take</span>
+                <span className="text-[11px] font-semibold text-fg">Studio Take</span>
                 {isRecording ? (
-                  <span className="badge badge--danger animate-pulse font-mono text-[10px]">
+                  <span className="badge badge--danger font-mono text-[9px]">
                     REC {formatTime(recordingTime)}
                   </span>
                 ) : (
-                  <span className="tag text-[9px]">WebM 30fps</span>
+                  <span className="tag text-[9px]">WebM</span>
                 )}
               </div>
 
               {recordingError && (
-                <p className="text-[11px] text-error font-medium">{recordingError}</p>
+                <p className="text-[10px] text-error font-medium">{recordingError}</p>
               )}
 
-              {/* Record / Stop / Download actions */}
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
                 {!isRecording ? (
                   <button
                     onClick={startRecording}
                     disabled={!finalAVStreamRef.current || !!recordingError}
-                    className="btn btn--danger btn--sm flex-1"
+                    className="btn btn--danger btn--sm flex-1 text-[11px]"
                   >
-                    <span className="w-2 h-2 rounded-full bg-white"></span>
                     Record
                   </button>
                 ) : (
                   <button
                     onClick={stopRecording}
-                    className="btn btn--secondary btn--sm flex-1 text-error border-error/50"
+                    className="btn btn--secondary btn--sm flex-1 text-error border-error/50 text-[11px]"
                   >
-                    <span className="w-2 h-2 bg-error"></span>
                     Stop
                   </button>
                 )}
@@ -1151,19 +1152,9 @@ function AirPiano() {
                 {videoBlob && !isRecording && (
                   <button
                     onClick={handleDownloadRecording}
-                    className="btn btn--success btn--sm flex-1"
-                    title="Download recorded performance"
+                    className="btn btn--success btn--sm flex-1 text-[11px]"
+                    title="Download recorded session"
                   >
-                    <svg
-                      width="12"
-                      height="12"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2.5"
-                    >
-                      <path d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16" />
-                    </svg>
                     Save ({formatFileSize(videoBlob.size)})
                   </button>
                 )}
@@ -1173,41 +1164,48 @@ function AirPiano() {
         )}
       </main>
 
-      {/* ── Help / Gesture Instructions Modal ─────────────────── */}
+      {/* ── Instructions Modal (Clean Minimalist — No Icons) ──── */}
       {showHelpModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="card panel-glass max-w-lg w-full p-6 flex flex-col gap-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-3 border-b border-border">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm"
+          style={{ backgroundColor: "rgba(0, 0, 0, 0.55)" }}
+        >
+          <div className="card panel-glass max-w-md w-full p-5 flex flex-col gap-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-2 border-b border-border">
               <div className="flex items-center gap-2">
-                <span className="topbar__brand-icon">🎹</span>
-                <h3 className="text-base font-bold text-fg">Air Piano Instructions</h3>
+                <span className="topbar__brand-icon">AP</span>
+                <h3 className="text-sm font-bold text-fg">Air Piano Instructions</h3>
               </div>
               <button
                 onClick={() => setShowHelpModal(false)}
                 className="topbar__btn"
               >
-                ✕
+                Close
               </button>
             </div>
 
-            <div className="space-y-4 text-xs text-fg-prose">
+            <div className="space-y-3.5 text-xs text-fg-prose">
               <div>
-                <h4 className="font-semibold text-fg text-sm mb-1.5 flex items-center gap-2">
-                  <span>🖐️</span> Finger Chords
+                <h4 className="font-semibold text-fg text-xs mb-1">
+                  Finger Chords
                 </h4>
                 <p className="leading-relaxed text-fg-muted mb-2">
-                  Hold your hand upright towards the webcam. Raise individual fingers above your knuckles to strike chords:
+                  Raise individual fingers in front of your camera to sound chords:
                 </p>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
                   {FINGER_NAMES.map((finger) => (
-                    <div key={finger} className="p-2 bg-surface rounded-md border border-border">
-                      <div className="text-[10px] text-fg-muted uppercase font-mono">
+                    <div
+                      key={finger}
+                      className="p-1.5 rounded border border-border"
+                      style={{ backgroundColor: "var(--surface)" }}
+                    >
+                      <div className="text-[9px] text-fg-muted uppercase font-mono">
                         {CHORD_META[finger].finger}
                       </div>
                       <div className="font-bold text-fg text-xs mt-0.5">
                         {CHORD_META[finger].name}
                       </div>
-                      <div className="text-[10px] text-fg-faint font-mono">
+                      <div className="text-[9px] text-fg-faint font-mono">
                         {CHORD_META[finger].notes}
                       </div>
                     </div>
@@ -1216,25 +1214,25 @@ function AirPiano() {
               </div>
 
               <div>
-                <h4 className="font-semibold text-fg text-sm mb-1 flex items-center gap-2">
-                  <span>↕️</span> Vertical Pitch Bend
+                <h4 className="font-semibold text-fg text-xs mb-1">
+                  Vertical Pitch Bend
                 </h4>
                 <p className="leading-relaxed text-fg-muted">
-                  Move your wrist up towards the top of your webcam frame to transpose up (up to +12 semitones). Move it down to transpose down (down to -12 semitones).
+                  Move your wrist up to transpose semitones higher (up to +12 st). Move wrist down to transpose lower (down to -12 st).
                 </p>
               </div>
 
               <div>
-                <h4 className="font-semibold text-fg text-sm mb-1 flex items-center gap-2">
-                  <span>🎙️</span> Microphone & Studio Take
+                <h4 className="font-semibold text-fg text-xs mb-1">
+                  Microphone & Recording
                 </h4>
                 <p className="leading-relaxed text-fg-muted">
-                  Toggle your microphone from the top navigation bar to blend your voice with the synth. Click <strong>Record</strong> in the Studio Take deck to capture your entire performance to a synchronized WebM video!
+                  Enable your microphone from the top bar to blend vocals with the synth. Click Record in the bottom Studio Take deck to capture your session to a synchronized WebM video file.
                 </p>
               </div>
             </div>
 
-            <div className="pt-3 border-t border-border flex justify-end">
+            <div className="pt-2 border-t border-border flex justify-end">
               <button
                 onClick={() => setShowHelpModal(false)}
                 className="btn btn--primary btn--sm"

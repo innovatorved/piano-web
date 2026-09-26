@@ -12,6 +12,18 @@
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+        <!-- Theme initialization -->
+        <script>
+            (() => {
+                try {
+                    const stored = localStorage.getItem('piano-theme');
+                    const theme = stored ? stored : 'dark';
+                    document.documentElement.setAttribute('data-theme', theme);
+                    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme === 'dark' ? '#111213' : '#f8f9fa');
+                } catch {}
+            })();
+        </script>
     </head>
     <body>
         <div id="root"></div>
